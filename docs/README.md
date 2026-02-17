@@ -243,6 +243,4 @@ For high-throughput deployments:
 ---
 
 **See Also:**
-- [Account Structures](./accounts.md)
 - [API Reference](./api.md)
-- [Deployment Guide](./deployment.md)

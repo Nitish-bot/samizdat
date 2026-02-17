@@ -32,17 +32,7 @@ The protocol ensures publishers only pay for confirmed displays while operators 
 ```
 Publisher → Upload CID → Create Campaign → Fund Vault
                               ↓
-Operator → Query Campaigns → Claim → Download → Display → Confirm
-                              ↓
-                         Payment Settlement
-```
-
-### Flow
-
-```
-Publisher → Upload CID → Create Campaign → Fund Vault
-                              ↓
-Operator → Query Campaigns → Claim → Download → Display → Confirm
+Operator → Query Campaigns → Download → Examine → Claim → Display → Confirm
                               ↓
                          Payment Settlement
 ```
@@ -51,15 +41,19 @@ Operator → Query Campaigns → Claim → Download → Display → Confirm
 
 ### Prerequisites
 
-- Rust 1.75+, Solana CLI 1.18+, Anchor 0.32+, Node.js 18+, Yarn
+- Rust 1.85+, Solana CLI 3.0+, Anchor 0.32+, Node.js 18+, Yarn
 
 ### Build and Test
 
 ```bash
 git clone https://github.com/yourorg/samizdat
+
 cd samizdat
+
 yarn install
+
 anchor build
+
 anchor test
 ```
 
@@ -68,66 +62,3 @@ anchor test
 - [Architecture](./docs/README.md) - System design and workflows
 - [Account Structures](./docs/accounts.md) - Detailed PDA specifications
 - [API Reference](./docs/api.md) - All instructions and parameters
-- [Deployment Guide](./docs/deployment.md) - Setup instructions
-
-## Usage
-
-### Publisher: Create Campaign
-
-```typescript
-const cid = await uploadToArweave(imageBuffer);
-
-await program.methods
-  .createPublisherAccount({
-    cids: [cid],
-    bountyPerPlay: new BN(1_000_000), // 0.001 SOL
-    totalPlays: 1000,
-    targetFilters: { minFootfall: 100 }
-  })
-  .accounts({ publisherAccount: pda, authority: publisher.publicKey })
-  .rpc();
-```
-
-### Operator: Register Node
-
-```typescript
-await program.methods
-  .registerNode({
-    location: { lat: 40.7128, lon: -74.0060 },
-    screenSize: "large",
-    resolution: { width: 1920, height: 1080 },
-    estimatedFootfall: 5000,
-    contentFilters: ["no-adult", "family-friendly"]
-  })
-  .accounts({ nodeAccount: pda, authority: operator.publicKey })
-  .rpc();
-```
-
-### Operator: Claim and Display
-
-```typescript
-// Query eligible campaigns
-const campaigns = await program.account.publisherAccount.all();
-
-// Claim campaign
-await program.methods.claimCampaign()
-  .accounts({ publisherAccount, nodeAccount, playRecord })
-  .rpc();
-
-// Download and validate
-const content = await fetchFromArweave(campaign.cids[0]);
-validateContent(content);
-
-// Display and confirm
-await program.methods.confirmPlay()
-  .accounts({ playRecord, publisherAccount, nodeAccount })
-  .rpc();
-```
-
-## Security
-
-- Authority-gated mutations
-- Timeout protection for unclaimed plays (5 minutes)
-- Rent-exempt PDAs
-- Local content validation by operators
-- Filter-based targeting
