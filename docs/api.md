@@ -235,10 +235,11 @@ pub struct PlayRecord {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum PlayStatus {
-    Claimed,    // Node claimed, not yet confirmed
-    Confirmed,  // Node confirmed display
-    TimedOut,   // Claim expired
-    Paid,       // Payment settled
+    Claimed,      // Node claimed, not yet confirmed
+    NodeRejected, // Node rejected play 
+    Confirmed,    // Node confirmed display
+    TimedOut,     // Claim expired
+    Paid,         // Payment settled
 }
 ```
 
