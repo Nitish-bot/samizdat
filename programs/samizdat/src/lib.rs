@@ -108,9 +108,9 @@ pub mod samizdat {
     pub fn claim_campaign(
         ctx: Context<ClaimCampaign>,
         cid_index: u8,
-        claim_timestamp: i64,
+        claim_nonce: i64,
     ) -> Result<()> {
-        instructions::process_claim_campaign(ctx, cid_index, claim_timestamp)
+        instructions::process_claim_campaign(ctx, cid_index, claim_nonce)
     }
 
     pub fn confirm_play(ctx: Context<ConfirmPlay>) -> Result<()> {

@@ -12,7 +12,7 @@ pub struct TimeoutPlay<'info> {
             PLAY_RECORD_SEED,
             campaign_account.key().as_ref(),
             play_record.node_account.as_ref(),
-            &play_record.claimed_at.to_le_bytes(),
+            &play_record.nonce.to_le_bytes(),
         ],
         bump = play_record.bump,
         has_one = campaign_account,

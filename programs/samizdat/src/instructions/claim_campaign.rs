@@ -6,7 +6,7 @@ use crate::state::{
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
-#[instruction(cid_index: u8, claim_timestamp: i64)]
+#[instruction(cid_index: u8, claim_nonce: i64)]
 pub struct ClaimCampaign<'info> {
     #[account(
         init,
@@ -16,7 +16,7 @@ pub struct ClaimCampaign<'info> {
             PLAY_RECORD_SEED,
             campaign_account.key().as_ref(),
             node_account.key().as_ref(),
-            &claim_timestamp.to_le_bytes(),
+            &claim_nonce.to_le_bytes(),
         ],
         bump,
     )]
@@ -46,7 +46,7 @@ pub struct ClaimCampaign<'info> {
 pub fn process_claim_campaign(
     ctx: Context<ClaimCampaign>,
     cid_index: u8,
-    claim_timestamp: i64,
+    claim_nonce: i64,
 ) -> Result<()> {
     let campaign = &ctx.accounts.campaign_account;
     let node = &ctx.accounts.node_account;
@@ -85,6 +85,8 @@ pub fn process_claim_campaign(
     );
 
     // Decrement plays_remaining
+    let clock = Clock::get()?;
+
     let campaign = &mut ctx.accounts.campaign_account;
     campaign.plays_remaining = campaign.plays_remaining.checked_sub(1).unwrap();
 
@@ -92,7 +94,8 @@ pub fn process_claim_campaign(
     let play_record = &mut ctx.accounts.play_record;
     play_record.campaign_account = ctx.accounts.campaign_account.key();
     play_record.node_account = ctx.accounts.node_account.key();
-    play_record.claimed_at = claim_timestamp;
+    play_record.nonce = claim_nonce;
+    play_record.claimed_at = clock.unix_timestamp;
     play_record.confirmed_at = 0;
     play_record.cid_index = cid_index;
     play_record.payment_amount = 0;
