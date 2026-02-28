@@ -52,4 +52,22 @@ pub enum SamizdatError {
 
     #[msg("Publisher account does not match")]
     PublisherMismatch,
+
+    #[msg("Invalid CID: empty or exceeds max length")]
+    InvalidCid,
+
+    #[msg("Amount must be greater than zero")]
+    InvalidAmount,
+
+    #[msg("Invalid CID index")]
+    InvalidCidIndex,
+
+    #[msg("Invalid status transition")]
+    InvalidStatusTransition,
+
+    #[msg("Node must wait for cooldown before claiming this campaign again")]
+    CooldownNotExpired,
+
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
 }

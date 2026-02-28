@@ -25,6 +25,7 @@ pub struct ConfirmPlay<'info> {
         mut,
         seeds = [CAMPAIGN_SEED, campaign_account.publisher_account.as_ref(), &campaign_account.campaign_id.to_le_bytes()],
         bump = campaign_account.bump,
+        has_one = publisher_account @ SamizdatError::PublisherMismatch,
     )]
     pub campaign_account: Account<'info, CampaignAccount>,
 
@@ -56,26 +57,18 @@ pub fn process_confirm_play(ctx: Context<ConfirmPlay>) -> Result<()> {
         SamizdatError::InvalidPlayStatus
     );
 
-    // Validate within 5-minute window
+    // Validate within timeout window
     let clock = Clock::get()?;
     require!(
         clock.unix_timestamp <= play_record.claimed_at + PLAY_TIMEOUT_SECONDS,
         SamizdatError::TimeoutExpired
     );
 
-    // Validate publisher_account matches campaign's publisher
-    require!(
-        ctx.accounts.publisher_account.key() == ctx.accounts.campaign_account.publisher_account,
-        SamizdatError::PublisherMismatch
-    );
-
     let bounty = ctx.accounts.campaign_account.bounty_per_play;
 
     // Transfer lamports from campaign PDA to operator wallet
-    // PDA-owned lamport manipulation
     let campaign_info = ctx.accounts.campaign_account.to_account_info();
     let authority_info = ctx.accounts.authority.to_account_info();
-
     **campaign_info.try_borrow_mut_lamports()? -= bounty;
     **authority_info.try_borrow_mut_lamports()? += bounty;
 

@@ -32,6 +32,12 @@ pub fn process_update_campaign(
 ) -> Result<()> {
     let campaign = &mut ctx.accounts.campaign_account;
 
+    // Closed campaigns are immutable
+    require!(
+        campaign.status != CampaignStatus::Closed,
+        SamizdatError::CampaignNotActive
+    );
+
     if let Some(mask) = tag_mask {
         campaign.tag_mask = mask;
     }
@@ -39,6 +45,11 @@ pub fn process_update_campaign(
         campaign.target_filters = filters;
     }
     if let Some(s) = status {
+        // Closed is only set via close_campaign instruction
+        require!(
+            !matches!(s, CampaignStatus::Closed),
+            SamizdatError::InvalidStatusTransition
+        );
         campaign.status = s;
     }
 

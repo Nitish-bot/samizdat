@@ -31,10 +31,10 @@ pub struct FundCampaign<'info> {
 pub fn process_fund_campaign(ctx: Context<FundCampaign>, amount: u64) -> Result<()> {
     let campaign = &ctx.accounts.campaign_account;
     require!(
-        campaign.status == CampaignStatus::Active || campaign.status == CampaignStatus::Paused,
+        campaign.status != CampaignStatus::Closed,
         SamizdatError::CampaignNotActive
     );
-    require!(amount > 0, SamizdatError::InsufficientFunds);
+    require!(amount > 0, SamizdatError::InvalidAmount);
 
     system_program::transfer(
         CpiContext::new(
@@ -46,6 +46,13 @@ pub fn process_fund_campaign(ctx: Context<FundCampaign>, amount: u64) -> Result<
         ),
         amount,
     )?;
+
+    // If the campaign was depleted, move it to Paused so the
+    // publisher can review before manually reactivating.
+    let campaign = &mut ctx.accounts.campaign_account;
+    if campaign.status == CampaignStatus::Depleted {
+        campaign.status = CampaignStatus::Paused;
+    }
 
     Ok(())
 }

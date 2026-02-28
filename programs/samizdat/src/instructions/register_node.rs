@@ -32,20 +32,21 @@ pub fn process_register_node(
     estimated_footfall: u32,
     establishment_type: String,
 ) -> Result<()> {
-    let node = &mut ctx.accounts.node_account;
-    node.authority = ctx.accounts.authority.key();
-    node.node_id = node_id;
-    node.location = location;
-    node.screen_size = screen_size;
-    node.resolution = resolution;
-    node.landmarks = landmarks;
-    node.blocked_tag_mask = blocked_tag_mask;
-    node.estimated_footfall = estimated_footfall;
-    node.establishment_type = establishment_type;
-    node.total_plays = 0;
-    node.total_earnings = 0;
-    node.registered_at = Clock::get()?.unix_timestamp;
-    node.status = NodeStatus::Active;
-    node.bump = ctx.bumps.node_account;
+    ctx.accounts.node_account.set_inner(NodeAccount {
+        authority: ctx.accounts.authority.key(),
+        node_id,
+        location,
+        screen_size,
+        resolution,
+        landmarks,
+        blocked_tag_mask,
+        estimated_footfall,
+        establishment_type,
+        total_plays: 0,
+        total_earnings: 0,
+        registered_at: Clock::get()?.unix_timestamp,
+        status: NodeStatus::Active,
+        bump: ctx.bumps.node_account,
+    });
     Ok(())
 }

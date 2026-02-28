@@ -1,6 +1,7 @@
 use crate::errors::SamizdatError;
 use crate::state::{
-    CampaignAccount, CampaignStatus, PublisherAccount, CAMPAIGN_SEED, MAX_CIDS, PUBLISHER_SEED,
+    CampaignAccount, CampaignStatus, PublisherAccount, CAMPAIGN_SEED, MAX_CIDS, MAX_CID_LENGTH,
+    PUBLISHER_SEED,
 };
 use anchor_lang::prelude::*;
 
@@ -38,6 +39,12 @@ pub fn process_add_cids_to_campaign(
         campaign.cids.len() + new_cids.len() <= MAX_CIDS,
         SamizdatError::TooManyCids
     );
+    for cid in &new_cids {
+        require!(
+            !cid.is_empty() && cid.len() <= MAX_CID_LENGTH,
+            SamizdatError::InvalidCid
+        );
+    }
 
     campaign.cids.extend(new_cids);
 

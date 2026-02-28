@@ -19,12 +19,13 @@ pub struct RegisterPublisher<'info> {
 }
 
 pub fn process_register_publisher(ctx: Context<RegisterPublisher>) -> Result<()> {
-    let publisher = &mut ctx.accounts.publisher_account;
-    publisher.authority = ctx.accounts.authority.key();
-    publisher.total_campaigns = 0;
-    publisher.total_spent = 0;
-    publisher.registered_at = Clock::get()?.unix_timestamp;
-    publisher.status = PublisherStatus::Active;
-    publisher.bump = ctx.bumps.publisher_account;
+    ctx.accounts.publisher_account.set_inner(PublisherAccount {
+        authority: ctx.accounts.authority.key(),
+        total_campaigns: 0,
+        total_spent: 0,
+        registered_at: Clock::get()?.unix_timestamp,
+        status: PublisherStatus::Active,
+        bump: ctx.bumps.publisher_account,
+    });
     Ok(())
 }
