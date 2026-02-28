@@ -1,9 +1,10 @@
 use crate::errors::SamizdatError;
 use crate::state::{
     CampaignAccount, CampaignStatus, PublisherAccount, PublisherStatus, TargetFilters,
-    CAMPAIGN_SEED, MAX_CIDS, PUBLISHER_SEED,
+    CAMPAIGN_SEED, MAX_CIDS, MAX_CID_LENGTH, PUBLISHER_SEED,
 };
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 #[derive(Accounts)]
 #[instruction(campaign_id: u64)]
@@ -39,6 +40,7 @@ pub fn process_create_campaign(
     total_plays: u64,
     tag_mask: u64,
     target_filters: TargetFilters,
+    claim_cooldown: i64,
 ) -> Result<()> {
     let publisher = &ctx.accounts.publisher_account;
     require!(
@@ -49,21 +51,49 @@ pub fn process_create_campaign(
         !cids.is_empty() && cids.len() <= MAX_CIDS,
         SamizdatError::TooManyCids
     );
+    for cid in &cids {
+        require!(
+            !cid.is_empty() && cid.len() <= MAX_CID_LENGTH,
+            SamizdatError::InvalidCid
+        );
+    }
     require!(bounty_per_play > 0, SamizdatError::InvalidBounty);
     require!(total_plays > 0, SamizdatError::InvalidPlays);
+    require!(claim_cooldown >= 0, SamizdatError::InvalidAmount);
 
-    let campaign = &mut ctx.accounts.campaign_account;
-    campaign.publisher_account = ctx.accounts.publisher_account.key();
-    campaign.campaign_id = campaign_id;
-    campaign.cids = cids;
-    campaign.bounty_per_play = bounty_per_play;
-    campaign.plays_remaining = total_plays;
-    campaign.plays_completed = 0;
-    campaign.tag_mask = tag_mask;
-    campaign.target_filters = target_filters;
-    campaign.status = CampaignStatus::Active;
-    campaign.created_at = Clock::get()?.unix_timestamp;
-    campaign.bump = ctx.bumps.campaign_account;
+    // Publisher must fund the full budget at creation
+    let required_funding = bounty_per_play
+        .checked_mul(total_plays)
+        .ok_or(SamizdatError::ArithmeticOverflow)?;
+
+    system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.campaign_account.to_account_info(),
+            },
+        ),
+        required_funding,
+    )?;
+
+    let clock = Clock::get()?;
+    let publisher_key = ctx.accounts.publisher_account.key();
+
+    ctx.accounts.campaign_account.set_inner(CampaignAccount {
+        publisher_account: publisher_key,
+        campaign_id,
+        cids,
+        bounty_per_play,
+        plays_remaining: total_plays,
+        plays_completed: 0,
+        tag_mask,
+        target_filters,
+        status: CampaignStatus::Active,
+        claim_cooldown,
+        created_at: clock.unix_timestamp,
+        bump: ctx.bumps.campaign_account,
+    });
 
     let publisher = &mut ctx.accounts.publisher_account;
     publisher.total_campaigns = publisher.total_campaigns.checked_add(1).unwrap();

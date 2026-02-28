@@ -14,6 +14,8 @@ pub struct CampaignAccount {
     pub tag_mask: u64,
     pub target_filters: TargetFilters,
     pub status: CampaignStatus,
+    /// Minimum seconds between consecutive claims by the same node
+    pub claim_cooldown: i64,
     pub created_at: i64,
     pub bump: u8,
 }

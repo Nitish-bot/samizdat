@@ -1,7 +1,7 @@
 use crate::errors::SamizdatError;
 use crate::state::{
-    CampaignAccount, CampaignStatus, NodeAccount, NodeStatus, PlayRecord, PlayStatus,
-    CAMPAIGN_SEED, NODE_ACCOUNT_SEED, PLAY_RECORD_SEED,
+    CampaignAccount, CampaignStatus, ClaimCooldown, NodeAccount, NodeStatus, PlayRecord,
+    PlayStatus, CAMPAIGN_SEED, COOLDOWN_SEED, NODE_ACCOUNT_SEED, PLAY_RECORD_SEED,
 };
 use anchor_lang::prelude::*;
 
@@ -21,6 +21,21 @@ pub struct ClaimCampaign<'info> {
         bump,
     )]
     pub play_record: Account<'info, PlayRecord>,
+
+    /// Tracks cooldown per (campaign, node) pair.
+    /// Created on first claim, updated on subsequent claims.
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + ClaimCooldown::INIT_SPACE,
+        seeds = [
+            COOLDOWN_SEED,
+            campaign_account.key().as_ref(),
+            node_account.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub claim_cooldown: Account<'info, ClaimCooldown>,
 
     #[account(
         mut,
@@ -68,8 +83,58 @@ pub fn process_claim_campaign(
     // Validate CID index
     require!(
         (cid_index as usize) < campaign.cids.len(),
-        SamizdatError::InvalidCampaignId
+        SamizdatError::InvalidCidIndex
     );
+
+    // Validate content does not violate node's blocked tag policy
+    require!(
+        campaign.tag_mask & node.blocked_tag_mask == 0,
+        SamizdatError::ContentFilterViolation
+    );
+
+    // Validate campaign target filters match this node
+    let filters = &campaign.target_filters;
+    if let Some(min) = filters.min_footfall {
+        require!(
+            node.estimated_footfall >= min,
+            SamizdatError::TargetMismatch
+        );
+    }
+    if let Some(max) = filters.max_footfall {
+        require!(
+            node.estimated_footfall <= max,
+            SamizdatError::TargetMismatch
+        );
+    }
+    if !filters.screen_sizes.is_empty() {
+        require!(
+            filters.screen_sizes.contains(&node.screen_size),
+            SamizdatError::TargetMismatch
+        );
+    }
+    if let Some(bounds) = filters.geo_bounds {
+        require!(
+            node.location.latitude >= bounds.min_lat
+                && node.location.latitude <= bounds.max_lat
+                && node.location.longitude >= bounds.min_lon
+                && node.location.longitude <= bounds.max_lon,
+            SamizdatError::TargetMismatch
+        );
+    }
+    if !filters.establishment_types.is_empty() {
+        require!(
+            filters.establishment_types.contains(&node.establishment_type),
+            SamizdatError::TargetMismatch
+        );
+    }
+    if !filters.required_landmarks.is_empty() {
+        for required in &filters.required_landmarks {
+            require!(
+                node.landmarks.contains(required),
+                SamizdatError::TargetMismatch
+            );
+        }
+    }
 
     // Validate vault has enough funds (excess lamports beyond rent-exempt minimum)
     let rent = Rent::get()?;
@@ -84,23 +149,43 @@ pub fn process_claim_campaign(
         SamizdatError::InsufficientFunds
     );
 
-    // Decrement plays_remaining
+    // Enforce per-node cooldown
     let clock = Clock::get()?;
+    let cooldown = &ctx.accounts.claim_cooldown;
+    if cooldown.last_claimed_at > 0 {
+        require!(
+            clock.unix_timestamp >= cooldown.last_claimed_at + campaign.claim_cooldown,
+            SamizdatError::CooldownNotExpired
+        );
+    }
 
+    let campaign_key = ctx.accounts.campaign_account.key();
+    let node_key = ctx.accounts.node_account.key();
+
+    // Decrement plays_remaining
     let campaign = &mut ctx.accounts.campaign_account;
     campaign.plays_remaining = campaign.plays_remaining.checked_sub(1).unwrap();
 
+    // Update cooldown tracker
+    ctx.accounts.claim_cooldown.set_inner(ClaimCooldown {
+        campaign: campaign_key,
+        node: node_key,
+        last_claimed_at: clock.unix_timestamp,
+        bump: ctx.bumps.claim_cooldown
+    });
+
     // Initialize PlayRecord
-    let play_record = &mut ctx.accounts.play_record;
-    play_record.campaign_account = ctx.accounts.campaign_account.key();
-    play_record.node_account = ctx.accounts.node_account.key();
-    play_record.nonce = claim_nonce;
-    play_record.claimed_at = clock.unix_timestamp;
-    play_record.confirmed_at = 0;
-    play_record.cid_index = cid_index;
-    play_record.payment_amount = 0;
-    play_record.status = PlayStatus::Claimed;
-    play_record.bump = ctx.bumps.play_record;
+    ctx.accounts.play_record.set_inner(PlayRecord {
+        campaign_account: campaign_key,
+        node_account: node_key,
+        nonce: claim_nonce,
+        claimed_at: clock.unix_timestamp,
+        confirmed_at: 0,
+        cid_index,
+        payment_amount: 0,
+        status: PlayStatus::Claimed,
+        bump: ctx.bumps.play_record,
+    });
 
     Ok(())
 }

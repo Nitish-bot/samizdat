@@ -5,6 +5,7 @@ pub const PUBLISHER_SEED: &[u8] = b"publisher";
 pub const CAMPAIGN_SEED: &[u8] = b"campaign";
 pub const NODE_ACCOUNT_SEED: &[u8] = b"node_account";
 pub const PLAY_RECORD_SEED: &[u8] = b"play_record";
+pub const COOLDOWN_SEED: &[u8] = b"cooldown";
 
 // Content Tag Bitmask
 // Protocol-level content categories.

@@ -27,6 +27,7 @@ pub mod samizdat {
         total_plays: u64,
         tag_mask: u64,
         target_filters: TargetFilters,
+        claim_cooldown: i64,
     ) -> Result<()> {
         instructions::process_create_campaign(
             ctx,
@@ -36,6 +37,7 @@ pub mod samizdat {
             total_plays,
             tag_mask,
             target_filters,
+            claim_cooldown,
         )
     }
 
