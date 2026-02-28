@@ -19,6 +19,7 @@ pub mod samizdat {
         instructions::process_register_publisher(ctx)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_campaign(
         ctx: Context<CreateCampaign>,
         campaign_id: u64,
@@ -66,6 +67,7 @@ pub mod samizdat {
     }
 
     // Operator Instructions
+    #[allow(clippy::too_many_arguments)]
     pub fn register_node(
         ctx: Context<RegisterNode>,
         node_id: u64,

@@ -123,7 +123,9 @@ pub fn process_claim_campaign(
     }
     if !filters.establishment_types.is_empty() {
         require!(
-            filters.establishment_types.contains(&node.establishment_type),
+            filters
+                .establishment_types
+                .contains(&node.establishment_type),
             SamizdatError::TargetMismatch
         );
     }
@@ -140,10 +142,7 @@ pub fn process_claim_campaign(
     let rent = Rent::get()?;
     let campaign_info = ctx.accounts.campaign_account.to_account_info();
     let rent_exempt_min = rent.minimum_balance(campaign_info.data_len());
-    let vault_balance = campaign_info
-        .lamports()
-        .checked_sub(rent_exempt_min)
-        .unwrap_or(0);
+    let vault_balance = campaign_info.lamports().saturating_sub(rent_exempt_min);
     require!(
         vault_balance >= campaign.bounty_per_play,
         SamizdatError::InsufficientFunds
@@ -171,7 +170,7 @@ pub fn process_claim_campaign(
         campaign: campaign_key,
         node: node_key,
         last_claimed_at: clock.unix_timestamp,
-        bump: ctx.bumps.claim_cooldown
+        bump: ctx.bumps.claim_cooldown,
     });
 
     // Initialize PlayRecord

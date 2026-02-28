@@ -21,6 +21,7 @@ pub struct RegisterNode<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn process_register_node(
     ctx: Context<RegisterNode>,
     node_id: u64,
