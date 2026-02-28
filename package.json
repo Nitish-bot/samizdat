@@ -1,8 +1,8 @@
 {
   "license": "ISC",
   "scripts": {
-    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "format:fix": "prettier tests/* -w",
+    "format": "prettier tests/* --check",
     "test": "anchor test",
     "generate-client": "anchor build && bun createCodamaClient.ts"
   },
