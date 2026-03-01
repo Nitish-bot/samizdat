@@ -48,7 +48,7 @@ Operator → Query Campaigns → Claim (on-chain filter match) → Display → C
 
 ### Prerequisites
 
-- Rust 1.85+, Solana CLI 3.0+, Anchor 0.32+, Node.js 18+, Yarn
+- Rust 1.85+, Solana CLI 3.0+, Anchor 0.32+, Node.js 18+, Bun
 
 ### Build and Test
 
@@ -57,7 +57,7 @@ git clone https://github.com/bakayu/samizdat
 
 cd samizdat
 
-yarn install
+bun install
 
 anchor build
 
